@@ -1,2 +1,61 @@
 # changes-workflow
-Contains the setup for working with changes and agents
+
+A small workflow for building software with AI agents: think first, build small. Each change gets a few short documents, and agents plan, build and review from them.
+
+## How it works
+
+All documents of a change live in one folder in the store, with a subfolder for each repository where it's built:
+
+```
+changes/feat-short-name/
+├── proposal.md     why and what (for a fix: steps to reproduce)
+├── spec.md         acceptance criteria and requirements
+├── plan.md         what must exist, and the decisions
+└── web-app/
+    ├── qa.md       how it's verified in web-app
+    └── tasks.md    the tasks for web-app, built one at a time
+```
+
+The store is a repository of its own, or a code repository that is its own store. It holds the templates in `changes/_templates/` and the change folders, and both are committed. Code repositories hold only code.
+
+Each repository gets the ways of working locally, never committed:
+
+- `.agents/skills/changes-workflow/`: the skill with all the rules, linked from `.claude/skills/` for Claude Code.
+- `.changes-workflow.yml`: where the store is, and this repository's name in it.
+- A short block in `AGENTS.md` that points agents to the skill.
+
+```yaml
+store: "../my-changes-store/changes"
+repository: "web-app"
+```
+
+Start your agent in the repository you work on, and name the change. It reads the change from the store, and its own `qa.md` and `tasks.md` from the subfolder with its name. Check out the change's branch in the store first.
+
+## Installing
+
+```bash
+./install.sh --repo /path/to/web-app --store /path/to/my-changes-store    # a repository that uses a store
+./install.sh --repo /path/to/repo                                         # a repository that is its own store
+```
+
+With `--store`, the store gets the templates, put there or updated. To work in the store itself, install it with `--repo` too.
+
+Options: `--dry-run` shows what would happen, and `--force` overwrites changed files without asking. Run it again to update.
+
+## What the script does
+
+- Writes `.changes-workflow.yml`, with `repository:` set to the folder name.
+- Copies the skill, and links it from `.claude/skills/`.
+- Adds the pointer block to `AGENTS.md`, or creates `AGENTS.md` with only that block, and makes `CLAUDE.md` import `AGENTS.md`. The rest of these files is kept.
+- Copies the templates into the store: the one given with `--store`, or the repository itself.
+- Gives Claude Code access to a separate store through `.claude/settings.local.json`.
+- Excludes everything it installs in `.git/info/exclude`, except the templates. In an `AGENTS.md` or `CLAUDE.md` the repository already commits, only the pointer block and the import line end up in git.
+- Asks before overwriting a file that differs; without a terminal it skips it. No backups are kept.
+
+## Tests
+
+```bash
+tests/install.sh
+```
+
+Runs the installer in throwaway repositories and checks the result.
