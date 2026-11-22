@@ -17,6 +17,8 @@ echo "=== code repo, dry run"
 "$SRC/install.sh" --dry-run --repo "$T/web-app" --store "$T/store" </dev/null > "$T/dry.txt"
 ok "dry run shows the templates" 'grep -q "copy     .changes-workflow/templates/qa.md" "$T/dry.txt"'
 ok "dry run writes nothing in the repo" '[ ! -e "$T/web-app/.changes-workflow" ] && [ ! -e "$T/web-app/AGENTS.md" ]'
+ok "dry run shows the store setup" 'grep -q "^Setting up the store itself" "$T/dry.txt"'
+ok "dry run writes nothing in the store" '[ -z "$(ls -A "$T/store" | grep -vx .git)" ]'
 
 echo "=== code repo"
 "$SRC/install.sh" --repo "$T/web-app" --store "$T/store" </dev/null >/dev/null
@@ -25,7 +27,10 @@ ok "settings: store path" 'grep -qxF "store: \"../store/changes\"" "$T/web-app/.
 ok "settings: repository name" 'grep -qxF "repository: \"web-app\"" "$T/web-app/.changes-workflow/config.yml"'
 ok "templates identical to the source" 'diff -r "$SRC/templates" "$T/web-app/.changes-workflow/templates" >/dev/null'
 ok "no changes folder in code repo" '[ ! -d "$T/web-app/changes" ]'
-ok "nothing written in the store" '[ -z "$(ls -A "$T/store" | grep -vx .git)" ]'
+ok "the store is set up as its own store" '[ "$(grep -v "^#" "$T/store/.changes-workflow/config.yml" | tr "\n" " ")" = "store: \"changes\" repository: \"store\" " ]'
+ok "the store has the skill and templates" '[ -f "$T/store/.agents/skills/changes-workflow/SKILL.md" ] && diff -r "$SRC/templates" "$T/store/.changes-workflow/templates" >/dev/null'
+ok "git sees nothing in the store (all excluded)" '[ -z "$(git -C "$T/store" status --porcelain)" ]'
+ok "the store gets no Claude settings" '[ ! -e "$T/store/.claude/settings.local.json" ]'
 
 echo "=== working in the store itself"
 "$SRC/install.sh" --repo "$T/store" </dev/null >/dev/null
@@ -34,7 +39,8 @@ ok "git sees nothing in the store (all excluded)" '[ -z "$(git -C "$T/store" sta
 ok "AGENTS.md is only the pointer block" '[ "$(head -1 "$T/web-app/AGENTS.md")" = "<!-- changes-workflow:start -->" ] && [ "$(wc -l < "$T/web-app/AGENTS.md" | tr -d " ")" = 4 ]'
 ok "skill identical to the source" 'diff -r "$SRC/.agents/skills/changes-workflow" "$T/web-app/.agents/skills/changes-workflow" >/dev/null'
 ok "git sees nothing (all excluded)" '[ -z "$(git -C "$T/web-app" status --porcelain)" ]'
-ok "rerun is up to date" '"$SRC/install.sh" --repo "$T/web-app" --store "$T/store" </dev/null | grep -q "^Done: 0 installed"'
+ok "rerun is up to date, repo and store" '[ "$("$SRC/install.sh" --repo "$T/web-app" --store "$T/store" </dev/null | grep -c "^Done: 0 installed")" = 2 ]'
+ok "next steps shown once" '[ "$("$SRC/install.sh" --repo "$T/web-app" --store "$T/store" </dev/null | grep -c "^Next steps:")" = 1 ]'
 
 echo "=== code repo with committed AGENTS.md and CLAUDE.md"
 printf '# Our rules\n- Be kind.\n' > "$T/docs-site/AGENTS.md"; printf '# Docs\n' > "$T/docs-site/CLAUDE.md"
