@@ -16,5 +16,5 @@
 
 <!-- changes-workflow:start -->
 ## Changes workflow
-- When `.changes-workflow.yml` exists at the repository root, plan, build and review every change with the `changes-workflow` skill, and do not implement a change before its documents are approved.
+- When `.changes-workflow/config.yml` exists at the repository root, plan, build and review every change with the `changes-workflow` skill, and do not implement a change before its documents are approved.
 <!-- changes-workflow:end -->

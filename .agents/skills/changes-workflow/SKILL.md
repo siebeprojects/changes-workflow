@@ -7,12 +7,12 @@ description: Plan a small change (proposal, specification, technical plan, QA pl
 
 ## Where things are
 
-`.changes-workflow.yml` at the repository root:
+`.changes-workflow/` at the repository root:
 
-- `store:` holds `_templates/` and a folder for each change.
-- `repository:` is this repository's subfolder in each change.
+- `config.yml`: `store:` holds a folder for each change, and `repository:` is this repository's subfolder in each change.
+- `templates/`: the document templates.
 
-No such file: this repository doesn't use the workflow. Stop and say it has to be installed first.
+No such folder: this repository doesn't use the workflow. Stop and say it has to be installed first.
 
 ```
 <store>/fix-short-name/
@@ -30,7 +30,7 @@ When a change folder is missing, the store probably has another branch checked o
 
 ## Rules
 
-- Copy each template from `<store>/_templates/` and follow it exactly. If something has no place, propose a template change.
+- Copy each template from `.changes-workflow/templates/` and follow it exactly. If something has no place, propose a template change.
 - Name a change by its folder name, as plain text, never as a link.
 - Keep documents short and in plain language.
 - Get each document approved before the next one, and build nothing before all are approved.
