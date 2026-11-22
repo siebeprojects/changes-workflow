@@ -20,7 +20,8 @@
 #
 # The store holds only a folder for each change (changes/<name>/: proposal.md,
 # spec.md, plan.md, and qa.md and tasks.md for each repository where it is
-# built). This script writes nothing in it.
+# built). Only those are committed; the store's own install is excluded like
+# everywhere else.
 #
 # The ways of working (.changes-workflow/, the skill and its link, and any
 # AGENTS.md or CLAUDE.md this script creates) are never committed: they are
@@ -31,8 +32,9 @@
 # --repo <dir>: the repository is its own store; other repositories can use it
 # as their store too.
 # --repo <dir> --store <dir>: the repository uses that store, and Claude Code
-# gets access to it. There is no --store alone: to work in the store itself,
-# install it with --repo <store>.
+# gets access to it. The store is then also set up as its own store, the same
+# as --repo <store>, so an agent can work in the store too. There is no --store
+# alone.
 #
 # Usage: ./install.sh [--force] [--dry-run] --repo <dir> [--store <dir>]
 
@@ -67,8 +69,9 @@ What is installed:
   .agents/skills/$SKILL/         the skill with all the rules, linked from .claude/skills/$SKILL
 
 The ways of working are never committed: everything is excluded privately
-through .git/info/exclude. Nothing is written in the store. With --store,
-Claude Code gets access to it through .claude/settings.local.json.
+through .git/info/exclude. With --store, Claude Code gets access to the store
+through .claude/settings.local.json, and the store is set up as its own store
+too (the same as --repo <store>).
 
 When a file already exists and differs, you are asked whether to overwrite
 it. Without a terminal (e.g. CI), conflicting files are skipped.
@@ -149,7 +152,7 @@ if [ -n "$STORE" ]; then
   EXTERNAL_CHANGES=1
   CHANGES="$(relative_path "$TARGET" "$STORE/changes")"
   CHANGES_ABS="$STORE/changes"
-  # Nothing is written in the store, so a mistyped path would go unnoticed.
+  # A mistyped store path would easily go unnoticed.
   if ! git -C "$STORE" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
     echo "Warning: the store $STORE is not a git repository; check the --store path."
   fi
@@ -527,7 +530,19 @@ install_claude_settings
 update_exclude
 
 print_summary
-if [ "$DRY_RUN" -eq 0 ]; then
+
+# 4. The store as its own store, so an agent can work in it too. It runs as a
+# separate install; CHANGES_WORKFLOW_IN_STORE only hides its next steps.
+if [ -n "$STORE" ]; then
+  echo
+  echo "Setting up the store itself"
+  args=(--repo "$STORE")
+  [ "$FORCE" -eq 1 ] && args=(--force "${args[@]}")
+  [ "$DRY_RUN" -eq 1 ] && args=(--dry-run "${args[@]}")
+  CHANGES_WORKFLOW_IN_STORE=1 "$SRC/install.sh" "${args[@]}"
+fi
+
+if [ "$DRY_RUN" -eq 0 ] && [ -z "${CHANGES_WORKFLOW_IN_STORE:-}" ]; then
   echo
   echo "Next steps:"
   if [ "$EXTERNAL_CHANGES" -eq 1 ]; then
