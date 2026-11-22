@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Install the changes workflow (agent rules, the changes-workflow skill and the
-# change templates) into another repository.
+# Install the changes workflow (agent rules, the changes-workflow skill, the
+# settings and the change templates) into a repository.
 #
 # The skill holds all the rules. AGENTS.md only gets a short pointer to it, in a
 # block between <!-- changes-workflow:start --> and <!-- changes-workflow:end -->:
@@ -9,29 +9,30 @@
 # AGENTS.md (@AGENTS.md). .claude/skills/ only holds a symlink to the skill in
 # .agents/skills/.
 #
-# There is always one store: the folder that holds the templates
-# (changes/_templates/) and a folder for each change with all its documents
-# (changes/<name>/: proposal.md, spec.md, plan.md, and qa.md and tasks.md for
-# each repository where it is built).
+# .changes-workflow/ holds the settings and the templates, and shows that a
+# repository uses the workflow:
+#   config.yml   `store:` is the store's changes folder, relative to the
+#                repository, and `repository:` is its name in the store: its
+#                qa.md and tasks.md go in <store>/<name>/<repository>/.
+#   templates/   the document templates.
+# Every repository has one, the store too, so a change to the store itself also
+# gets a subfolder.
 #
-# .changes-workflow.yml holds the settings and shows that a repository uses the
-# workflow: `store:` is the store's changes folder, relative to the repository,
-# and `repository:` is its name in the store: its qa.md and tasks.md go in
-# changes/<name>/<repository>/. Every repository has one, the store too, so a
-# change to the store itself also gets a subfolder.
+# The store holds only a folder for each change (changes/<name>/: proposal.md,
+# spec.md, plan.md, and qa.md and tasks.md for each repository where it is
+# built). This script writes nothing in it.
 #
-# The ways of working (the settings, the skill and its link, and any AGENTS.md
-# or CLAUDE.md this script creates) are never committed: they are always
-# excluded privately through .git/info/exclude. Only the pointer block in an
-# AGENTS.md, and the import line in a CLAUDE.md, that the repository already
-# commits end up in git. The templates in the store are committed.
+# The ways of working (.changes-workflow/, the skill and its link, and any
+# AGENTS.md or CLAUDE.md this script creates) are never committed: they are
+# always excluded privately through .git/info/exclude. Only the pointer block in
+# an AGENTS.md, and the import line in a CLAUDE.md, that the repository already
+# commits end up in git.
 #
-# --repo <dir>: the repository is its own store and gets the templates; other
-# repositories can use it as their store too.
-# --repo <dir> --store <dir>: the repository uses that store. The store gets
-# the templates, put there or updated, and Claude Code gets access to it.
-# There is no --store alone: a store is set up with the first repository that
-# uses it, or with --repo <store> to work in the store itself.
+# --repo <dir>: the repository is its own store; other repositories can use it
+# as their store too.
+# --repo <dir> --store <dir>: the repository uses that store, and Claude Code
+# gets access to it. There is no --store alone: to work in the store itself,
+# install it with --repo <store>.
 #
 # Usage: ./install.sh [--force] [--dry-run] --repo <dir> [--store <dir>]
 
@@ -46,7 +47,9 @@ DRY_RUN=0
 REPO=""
 STORE=""
 CHANGES="changes"
-SETTINGS=".changes-workflow.yml"
+DIR=".changes-workflow"
+SETTINGS="$DIR/config.yml"
+OLD_SETTINGS=".changes-workflow.yml"
 
 usage() {
   cat <<EOF
@@ -54,19 +57,18 @@ Usage: $(basename "$0") [--force] [--dry-run] --repo <dir> [--store <dir>]
 
 Installs the changes workflow:
   --repo <dir>                a repository that is its own store (others can use it too)
-  --repo <dir> --store <dir>  a repository that uses that store; the store gets the templates
+  --repo <dir> --store <dir>  a repository that uses that store
 
 What is installed:
-  $SETTINGS      the settings: the store, and this repository's name in it
-  AGENTS.md                  a pointer to the skill in a marked block (rest of the file is kept)
-  CLAUDE.md                  imports AGENTS.md
-  .agents/skills/$SKILL/     the skill with all the rules, linked from .claude/skills/$SKILL
-  changes/_templates/        the document templates, only in the store (commit these)
+  $SETTINGS   the settings: the store, and this repository's name in it
+  $DIR/templates/      the document templates
+  AGENTS.md                      a pointer to the skill in a marked block (rest of the file is kept)
+  CLAUDE.md                      imports AGENTS.md
+  .agents/skills/$SKILL/         the skill with all the rules, linked from .claude/skills/$SKILL
 
-The ways of working are never committed: everything except the templates is
-excluded privately through .git/info/exclude. With --store, the templates go
-to the store, and Claude Code gets access to it through
-.claude/settings.local.json.
+The ways of working are never committed: everything is excluded privately
+through .git/info/exclude. Nothing is written in the store. With --store,
+Claude Code gets access to it through .claude/settings.local.json.
 
 When a file already exists and differs, you are asked whether to overwrite
 it. Without a terminal (e.g. CI), conflicting files are skipped.
@@ -138,9 +140,6 @@ if [ "$TARGET" = "$SRC" ] || [ "$STORE" = "$SRC" ]; then
   echo "Error: cannot install into this repository itself" >&2; exit 1
 fi
 
-# The folder that gets the templates: the store, which is the repository itself
-# without --store.
-TEMPLATES_ROOT="$TARGET"
 EXTERNAL_CHANGES=0
 CHANGES_ABS=""
 if [ -n "$STORE" ]; then
@@ -150,8 +149,7 @@ if [ -n "$STORE" ]; then
   EXTERNAL_CHANGES=1
   CHANGES="$(relative_path "$TARGET" "$STORE/changes")"
   CHANGES_ABS="$STORE/changes"
-  TEMPLATES_ROOT="$STORE"
-  # The store is set up automatically, so a mistyped path would go unnoticed.
+  # Nothing is written in the store, so a mistyped path would go unnoticed.
   if ! git -C "$STORE" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
     echo "Warning: the store $STORE is not a git repository; check the --store path."
   fi
@@ -159,21 +157,23 @@ fi
 
 # Files to install are staged in a temporary folder, together with the
 # generated settings, before they are compared with and copied to the
-# repository and the store. Other temporary files go there too, so the trap
+# repository. Other temporary files go there too, so the trap
 # removes them on any exit.
 STAGE="$(mktemp -d)"
 trap 'rm -rf "$STAGE"' EXIT
-(cd "$SRC" && find AGENTS.md CLAUDE.md ".agents/skills/$SKILL" changes/_templates -type f ! -name '.DS_Store') |
+(cd "$SRC" && find AGENTS.md CLAUDE.md ".agents/skills/$SKILL" templates -type f ! -name '.DS_Store') |
   while IFS= read -r f; do
-    mkdir -p "$STAGE/$(dirname "$f")"
-    cp -p "$SRC/$f" "$STAGE/$f"
+    dst="$f"
+    case "$f" in templates/*) dst="$DIR/$f" ;; esac
+    mkdir -p "$STAGE/$(dirname "$dst")"
+    cp -p "$SRC/$f" "$STAGE/$dst"
   done
 
 # The settings the skill reads. Every repository, the store too, has a name in
 # the store: its folder name.
 {
   echo "# Written by changes-workflow's install.sh: this repository uses the changes workflow."
-  echo "# The folder with the templates and a folder for each change."
+  echo "# The store's folder with a folder for each change."
   echo "store: \"$CHANGES\""
   echo "# This repository's name in the store: its qa.md and tasks.md go in <store>/<change>/<repository>/."
   echo "repository: \"$(basename "$TARGET")\""
@@ -193,7 +193,7 @@ else
 fi
 
 COPIED=0; SKIPPED=0; UNCHANGED=0
-# One skipped file per line: labels such as "store: changes/..." contain spaces.
+# One skipped file per line, so labels may contain spaces.
 SKIPPED_LIST=""
 
 # Run a command, unless in dry-run mode (the action is already reported).
@@ -263,12 +263,10 @@ skip() {
   SKIPPED=$((SKIPPED + 1)); SKIPPED_LIST="$SKIPPED_LIST$1"$'\n'
 }
 
-# Copy one file (path relative to the root) from STAGE to the root: the
-# repository, or the store for the templates.
+# Copy one file (path relative to the repository) from STAGE to the repository.
 copy_file() {
-  local rel="$1" root="${2:-$TARGET}"
-  local src="$STAGE/$rel" dst="$root/$rel" label="$rel"
-  [ "$root" = "$TARGET" ] || label="store: $rel"
+  local rel="$1"
+  local src="$STAGE/$rel" dst="$TARGET/$rel" label="$rel"
   if [ -e "$dst" ]; then
     if cmp -s "$src" "$dst"; then
       UNCHANGED=$((UNCHANGED + 1)); return
@@ -390,13 +388,24 @@ report_old_skills() {
   done
 }
 
-# Mention templates copied into a code repository by earlier versions; the
-# templates now live only in the store. They are not removed.
+# Earlier versions wrote the settings to .changes-workflow.yml, which
+# $SETTINGS replaces: remove it. It was written by this script and never
+# committed.
+remove_old_settings() {
+  [ -f "$TARGET/$OLD_SETTINGS" ] || return 0
+  remove_existing "$TARGET/$OLD_SETTINGS" "$OLD_SETTINGS (replaced by $SETTINGS)"
+}
+
+# Mention templates put in changes/_templates/ by earlier versions, in the
+# repository or its store; the templates now live in $DIR/templates/. They are
+# not removed: they may be committed.
 report_old_templates() {
-  [ "$EXTERNAL_CHANGES" -eq 1 ] || return 0
-  if [ -d "$TARGET/changes/_templates" ]; then
-    echo "  note     changes/_templates/ found; the templates now live only in $CHANGES/_templates/. Remove changes/_templates/ here."
-  fi
+  local root
+  for root in "$TARGET" ${STORE:+"$STORE"}; do
+    if [ -d "$root/changes/_templates" ]; then
+      echo "  note     $root/changes/_templates/ found; the templates now live in $DIR/templates/. Remove it, from git too."
+    fi
+  done
 }
 
 # Give Claude Code access to an external changes folder. Only creates the
@@ -430,8 +439,8 @@ print_summary() {
 # Privately ignore the ways of working by adding root-anchored patterns to
 # .git/info/exclude (never committed). AGENTS.md and CLAUDE.md are only
 # excluded when this script created them: in the repository's own files, only
-# the pointer block and the import line end up in git. The templates are never
-# excluded; an old /changes/_templates/ line from earlier versions is removed.
+# the pointer block and the import line end up in git. Lines for files of
+# earlier versions are removed.
 update_exclude() {
   if [ "$IS_GIT" -eq 0 ]; then
     echo "  note     not a git repository; skipping .git/info/exclude"
@@ -443,7 +452,7 @@ update_exclude() {
   file="$(git -C "$TARGET" rev-parse --git-path info/exclude)"
   case "$file" in /*) ;; *) file="$TARGET/$file" ;; esac
 
-  local patterns="/$SETTINGS /.agents/skills/$SKILL/ /.claude/skills/$SKILL"
+  local patterns="/$DIR/ /.agents/skills/$SKILL/ /.claude/skills/$SKILL"
   if [ "$AGENTS_EXISTED" -eq 0 ]; then
     patterns="/AGENTS.md $patterns"
   elif ! grep -qsxF -- "/AGENTS.md" "$file"; then
@@ -452,13 +461,16 @@ update_exclude() {
   [ "$CLAUDE_EXISTED" -eq 0 ] && patterns="/CLAUDE.md $patterns"
   [ "$EXTERNAL_CHANGES" -eq 1 ] && patterns="$patterns /.claude/settings.local.json"
 
-  if grep -qsxF -- "/changes/_templates/" "$file"; then
-    echo "  include  /changes/_templates/ (removed from .git/info/exclude)"
-    if [ "$DRY_RUN" -eq 0 ]; then
-      grep -vxF -- "/changes/_templates/" "$file" > "$file.tmp" || true
-      mv "$file.tmp" "$file"
+  local old
+  for old in "/$OLD_SETTINGS" "/changes/_templates/"; do
+    if grep -qsxF -- "$old" "$file"; then
+      echo "  include  $old (removed from .git/info/exclude)"
+      if [ "$DRY_RUN" -eq 0 ]; then
+        grep -vxF -- "$old" "$file" > "$file.tmp" || true
+        mv "$file.tmp" "$file"
+      fi
     fi
-  fi
+  done
 
   local p missing="" path
   for p in $patterns; do
@@ -494,18 +506,18 @@ echo "  repository: $(basename "$TARGET")"
 [ "$DRY_RUN" -eq 1 ] && echo "  mode: dry-run (no changes will be made)"
 echo
 
-# 1. Settings, the pointer in AGENTS.md and the Claude Code import.
-copy_file "$SETTINGS"
+# 1. Settings and templates, the pointer in AGENTS.md and the Claude Code import.
+while IFS= read -r f; do
+  copy_file "${f#$STAGE/}"
+done < <(find "$STAGE/$DIR" -type f | sort)
+remove_old_settings
 install_agents_md
 install_claude_md
 
-# 2. The skill in the repository, and the templates in the store.
+# 2. The skill.
 while IFS= read -r f; do
   copy_file "${f#$STAGE/}"
 done < <(find "$STAGE/.agents/skills/$SKILL" -type f | sort)
-while IFS= read -r f; do
-  copy_file "${f#$STAGE/}" "$TEMPLATES_ROOT"
-done < <(find "$STAGE/changes/_templates" -type f | sort)
 link_skill
 report_old_skills
 report_old_templates
@@ -519,12 +531,11 @@ if [ "$DRY_RUN" -eq 0 ]; then
   echo
   echo "Next steps:"
   if [ "$EXTERNAL_CHANGES" -eq 1 ]; then
-    echo "  1. Review $SETTINGS, AGENTS.md and .agents/skills/$SKILL/."
-    echo "  2. Commit the templates in $STORE/changes/_templates/ when they are new or changed."
-    echo "  3. Each change has its folder in $CHANGES; this repository's qa.md and tasks.md"
+    echo "  1. Review $DIR/, AGENTS.md and .agents/skills/$SKILL/."
+    echo "  2. Each change has its folder in $CHANGES; this repository's qa.md and tasks.md"
     echo "     go in its subfolder $(basename "$TARGET")/."
   else
-    echo "  1. Review $SETTINGS, AGENTS.md, .agents/skills/$SKILL/ and changes/_templates/, and commit the templates."
-    echo "  2. Start a change: mkdir changes/feat-short-name and copy the proposal template into it."
+    echo "  1. Review $DIR/, AGENTS.md and .agents/skills/$SKILL/."
+    echo "  2. Start a change: mkdir changes/feat-short-name and copy $DIR/templates/proposal.md into it."
   fi
 fi

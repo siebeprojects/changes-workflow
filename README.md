@@ -16,13 +16,17 @@ changes/feat-short-name/
     └── tasks.md    the tasks for web-app, built one at a time
 ```
 
-The store is a repository of its own, or a code repository that is its own store. It holds the templates in `changes/_templates/` and the change folders, and both are committed. Code repositories hold only code.
+The store is a repository of its own, or a code repository that is its own store. Only the change folders are committed there. Code repositories hold only code.
 
-Each repository gets the ways of working locally, never committed:
+Each repository, the store too, gets the ways of working locally, never committed:
 
-- `.agents/skills/changes-workflow/`: the skill with all the rules, linked from `.claude/skills/` for Claude Code.
-- `.changes-workflow.yml`: where the store is, and this repository's name in it.
-- A short block in `AGENTS.md` that points agents to the skill.
+```
+.changes-workflow/
+├── config.yml      where the store is, and this repository's name in it
+└── templates/      the document templates
+.agents/skills/changes-workflow/    the skill with all the rules, linked from .claude/skills/ for Claude Code
+AGENTS.md                           a short block that points agents to the skill
+```
 
 ```yaml
 store: "../my-changes-store/changes"
@@ -38,19 +42,19 @@ Start your agent in the repository you work on, and name the change. It reads th
 ./install.sh --repo /path/to/repo                                         # a repository that is its own store
 ```
 
-With `--store`, the store gets the templates, put there or updated. To work in the store itself, install it with `--repo` too.
+Nothing is written in the store. To work in the store itself, install it with `--repo` too.
 
 Options: `--dry-run` shows what would happen, and `--force` overwrites changed files without asking. Run it again to update.
 
 ## What the script does
 
-- Writes `.changes-workflow.yml`, with `repository:` set to the folder name.
+- Writes `.changes-workflow/config.yml`, with `repository:` set to the folder name, and copies the templates to `.changes-workflow/templates/`.
 - Copies the skill, and links it from `.claude/skills/`.
 - Adds the pointer block to `AGENTS.md`, or creates `AGENTS.md` with only that block, and makes `CLAUDE.md` import `AGENTS.md`. The rest of these files is kept.
-- Copies the templates into the store: the one given with `--store`, or the repository itself.
 - Gives Claude Code access to a separate store through `.claude/settings.local.json`.
-- Excludes everything it installs in `.git/info/exclude`, except the templates. In an `AGENTS.md` or `CLAUDE.md` the repository already commits, only the pointer block and the import line end up in git.
+- Excludes everything it installs in `.git/info/exclude`. In an `AGENTS.md` or `CLAUDE.md` the repository already commits, only the pointer block and the import line end up in git.
 - Asks before overwriting a file that differs; without a terminal it skips it. No backups are kept.
+- Removes the `.changes-workflow.yml` of earlier versions, and mentions a `changes/_templates/` folder left in the repository or the store.
 
 ## Tests
 
