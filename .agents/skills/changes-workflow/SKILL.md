@@ -28,16 +28,9 @@ The type is `feat`, `fix`, `refactor`, `perf`, `test`, `docs` or `chore`. The fo
 
 When a change folder is missing, the store probably has another branch checked out: say so, and don't create it.
 
-## Rules
-
-- Copy each template from `.changes-workflow/templates/` and follow it exactly. If something has no place, propose a template change.
-- Name a change by its folder name, as plain text, never as a link.
-- Keep documents short and in plain language.
-- Get each document approved before the next one, and build nothing before all are approved.
-- If an approved document has to change, stop and ask.
-
 ## Steps
 
 - Plan a change: [planning.md](planning.md)
+- Write its documents: [writing.md](writing.md)
 - Build it: [implementing.md](implementing.md)
 - Review it: [reviewing.md](reviewing.md)

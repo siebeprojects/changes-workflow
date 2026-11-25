@@ -1,10 +1,10 @@
 # Planning a change
 
-Ask for the type, short name and goal if they're missing. Work in the store, on the branch with the change's name (ask before creating it). Write no code. Ask for approval after each document.
+Ask for the type, short name and goal if they're missing. Work in the store, on the branch with the change's name (ask before creating it). Write no code.
 
-1. **`proposal.md`:** the user story, why it's needed, and what we want. For a fix, the steps to reproduce it, what happens and what should happen.
-2. **`spec.md`:** acceptance criteria (what someone can do or see, one sentence each), functional requirements (what the system does, with its rules) and non-functional requirements (how well). No implementation. List open questions.
-3. **`plan.md`:** first find the correct solution (see "Solving it correctly" in [implementing.md](implementing.md)). Then list what must exist for each functional requirement, in build order, without explanations. Name the repositories, and record real choices under Decisions. Every repository named must have `.changes-workflow/config.yml`; if one doesn't, stop.
-4. **Per repository**, in `<change>/<repository>/`, with the name from that repository's settings:
-   - **`qa.md`:** how each acceptance criterion is verified there. For a fix, a test that follows the steps to reproduce and fails without the fix.
-   - **`tasks.md`:** small tasks, in build order, for that repository's part of the plan.
+Write each document as [writing.md](writing.md) says, in this order. Get each one approved before the next. If an approved document has to change, stop and ask.
+
+1. **`proposal.md`**
+2. **`spec.md`**
+3. **`plan.md`:** first find the correct solution (see "Solving it correctly" in [implementing.md](implementing.md)). Every repository it names must have `.changes-workflow/config.yml`; if one doesn't, stop.
+4. **`qa.md` and `tasks.md`**, per repository, in `<change>/<repository>/`, with the name from that repository's settings.
