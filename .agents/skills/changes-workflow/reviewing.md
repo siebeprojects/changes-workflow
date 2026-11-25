@@ -7,7 +7,7 @@ Review when all tasks are built, before the pull requests are merged, preferably
 - **Coverage:** every functional requirement has its plan entries and tasks, every task is ticked off and built, and every acceptance criterion has a check in `qa.md` that ran, with its result in the pull request.
 - **Plan:** the code does what the spec and plan say, and nothing more. Decisions are followed, and deviations were approved.
 - **Code:** it follows "Solving it correctly" and "Writing code" in [implementing.md](implementing.md), and the tests pass.
-- **Consistency:** documents follow their templates, changes are named by folder name, and affected docs and examples are updated.
+- **Consistency:** documents follow [writing.md](writing.md), and affected docs and examples are updated.
 
 ## Report
 
