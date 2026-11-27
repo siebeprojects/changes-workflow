@@ -33,4 +33,5 @@ When a change folder is missing, the store probably has another branch checked o
 - Plan a change: [planning.md](planning.md)
 - Write its documents: [writing.md](writing.md)
 - Build it: [implementing.md](implementing.md)
+- Test it: [testing.md](testing.md)
 - Review it: [reviewing.md](reviewing.md)

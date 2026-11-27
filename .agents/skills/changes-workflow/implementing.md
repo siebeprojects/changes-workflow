@@ -26,11 +26,61 @@ In the pull request, put the test results under Tests, and name this repository'
 
 ## Writing code
 
-- Small functions with one job, clear names, little nesting, early returns.
-- Plain code over clever code. No abstractions or dependencies you don't need yet.
-- Follow the existing structure, and reuse code instead of copying it.
-- Comments explain why, not what.
-- Test behavior, not internals, and run the existing tests too.
+Write code that is easy to read and easy to change. A reader understands what the code does from its names. The next feature can be added without a workaround.
+
+### Functions
+
+- A function does one thing. If you need "and" to say what it does, split it.
+- Its name says what it does. A reader knows this without reading the code inside.
+- Start the name with a verb when the function does something, such as `loadSiteConfig`. Start it with `is` or `has` when it answers yes or no, such as `isFallback`. Use a noun when it gives a value, such as `errorCount`.
+- A function does only what its name says. For example, `formatProblem` returns text. It doesn't print the text, and it doesn't change anything.
+- Keep a function short. When a function has several steps, put each step in its own function with a clear name. The main function then reads like a list of steps.
+- Example: `loadSiteConfig` calls `readConfigFile`, `parseJson` and `validateSiteConfig`.
+- Return early for the simple cases instead of nesting `if`s.
+- Give a function at most three parameters. When it needs more, pass one object with named fields.
+- Don't pass `true` or `false` to choose between two behaviors. Write two functions instead.
+
+### Names
+
+- Name things after what they are in the product. Use the same word for the same thing everywhere, in the code and in the documents.
+- Don't use vague names, such as `data`, `info`, `handle`, `process`, `manager`, `util` or `helper`.
+- Don't use abbreviations, except common ones such as `url` or `id`.
+
+### Modules and abstractions
+
+- A module or class has one job, and its name says which.
+- Each job lives in one place. Other code uses it only through a few clear functions. Other code doesn't depend on how the job is done inside.
+- Example: every check adds its problems to one report. Only the report prints them.
+- Before you write code, look for code that already does the job. Use that code, or extend it.
+- Never copy code. Move the code to one function, and call that function from both places.
+- Add an abstraction when it gives a job its one place or removes copied code. Don't build one for a feature nobody asked for.
+- Leave the code so that the next feature can be added to a module, without a workaround.
+
+### Values, errors and comments
+
+- Don't hardcode values. Give each value a name, once, in one place.
+- Handle errors the way the repository does. Never hide an error. Report it, or pass it on.
+- A comment says why the code is the way it is.
+- When code needs a comment to explain what it does, give it a better name or split it instead.
+- Give each exported function, class and module a short comment that says what it does.
+- When you change the code, update its comments.
+- Leave no unused code, commented-out code or debug output.
+
+### Style
+
+- Write plain code, not clever code.
+- Follow the repository's structure and conventions.
+- Don't add a dependency you don't need.
+
+| Not | But |
+|---|---|
+| `process(page, true)` | `validatePage(page)` and `renderPage(page)` |
+| `check()` prints a problem and returns `false` | `findBrokenLinks()` returns the broken links, and the caller adds them to the report |
+| `if (path.includes(' '))` in two files | `isValidPagePath(path)`, in one module, used by both |
+
+## Writing tests
+
+Write and run the tests as [testing.md](testing.md) says.
 
 ## Done when
 

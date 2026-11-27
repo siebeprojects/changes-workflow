@@ -7,4 +7,4 @@ Write each document as [writing.md](writing.md) says, in this order. Get each on
 1. **`proposal.md`**
 2. **`spec.md`**
 3. **`plan.md`:** first find the correct solution (see "Solving it correctly" in [implementing.md](implementing.md)). Every repository it names must have `.changes-workflow/config.yml`; if one doesn't, stop.
-4. **`qa.md` and `tasks.md`**, per repository, in `<change>/<repository>/`, with the name from that repository's settings.
+4. **`qa.md` and `tasks.md`**, per repository, in `<change>/<repository>/`, with the name from that repository's settings. Plan the checks in `qa.md` so they can be built as [testing.md](testing.md) says.
